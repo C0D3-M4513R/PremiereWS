@@ -2,10 +2,18 @@
 const csInterface = new CSInterface();
 const loc = window.location.pathname;
 const dir = decodeURI(loc.substring(1, loc.lastIndexOf('/')));
+const io = require(dir + "/node_modules/socket.io/lib/index.js");
 
 function init() {
 
-    // TODO: Initialize stuff
+    const server = io.listen(42300);
+
+    server.on('connection', function (socket) {
+        socket.on('hello', function (data) {
+            csInterface.evalScript("demo.showMsg('Got " + data + "');")
+        });
+    });
+
     csInterface.evalScript("demo.showMsg('Hell orld!');")
 
     document.getElementById("statusContainer").innerHTML = "Ready!";
@@ -18,7 +26,7 @@ function openHostWindow() {
 }
 
 function changeView(settingsView) {
-    if(settingsView) {
+    if (settingsView) {
         document.getElementById("defaultView").className = "notSoVisible";
         document.getElementById("settingsView").className = "visible";
     } else {
