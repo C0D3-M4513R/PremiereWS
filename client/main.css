@@ -1,0 +1,48 @@
+* {
+    font-family: sans-serif;
+    background: #232323;
+    overflow-y: hidden;
+    color: #BBBBBB;
+    font-size: 11pt;
+}
+
+#statusContainer {
+    font-weight: bold;
+}
+
+.red {
+    color: red;
+}
+
+.green {
+    color:green;
+}
+
+#lastCommandContainer {
+    font-size:8pt;
+}
+
+.visible {
+    display: block;
+}
+
+.notSoVisible {
+    display: none;
+}
+
+.upperRight {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    height: 20px;
+    width: 20px;
+    background: blue;
+}
+
+#gear {
+    background: url("img/cog-solid.svg") no-repeat;
+}
+
+#arrow {
+    background: url("img/arrow-left-solid.svg") no-repeat;
+}

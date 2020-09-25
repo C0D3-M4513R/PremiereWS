@@ -1,0 +1,14 @@
+{
+  "name": "host",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.jsx",
+  "dependencies": {},
+  "devDependencies": {},
+  "scripts": {
+    "run": "tsc index.tsx --outfile index.jsx --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
