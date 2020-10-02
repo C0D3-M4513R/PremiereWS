@@ -8,9 +8,19 @@ function init() {
 
     const server = io.listen(42300);
 
+    let ready = true;
+
     server.on('connection', function (socket) {
-        socket.on('hello', function (data) {
-            csInterface.evalScript("demo.showMsg('Got " + data + "');")
+        socket.on('zoom', function (data) {
+            console.log("Received: " + data);
+            if(ready) {
+                ready = false;
+                csInterface.evalScript("demo.setZoom(" + parseInt(data) + ");", function() {
+                    ready = true;
+                })
+            } else {
+                console.log("Dumped: " + data);
+            }
         });
     });
 

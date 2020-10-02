@@ -10,7 +10,58 @@ declare interface Track {
 }
 
 var demo = {
-  showMsg : function() {
+  showMsg: function () {
     alert("Hello World!")
+  },
+  setZoom: function (zoomLevel: number): boolean {
+    setZoomOfCurrentClip(zoomLevel);
+    return true;
+  },
+  receiveEvent: function (data: WSEvent) {
+    switch (data.name) {
+      case "zoom":
+        break;
+      case "move":
+        break;
+    }
   }
+}
+
+type WSEvent = ZoomEvent | MoveEvent;
+
+interface ZoomEvent {
+  name: "zoom";
+  zoomLevel?: number
+  zoomDelta?: number
+}
+
+interface MoveEvent{
+  name: "move";
+  deltaX: number
+  deltaY: number
+}
+
+function setZoomOfCurrentClip(zoomLevel: number): boolean {
+  const clipInfo = getFirstSelectedClip(true)
+  const scaleInfo = clipInfo.clip.components[1].properties[1];
+  scaleInfo.setValue(zoomLevel, true);
+  return true;
+}
+
+function getFirstSelectedClip(videoClip: Boolean) {
+  const currentSequence = app.project.activeSequence;
+  const tracks = videoClip ? currentSequence.videoTracks : currentSequence.audioTracks;
+  for (let i = 0; i < tracks.numTracks; i++) {
+    for (let j = 0; j < tracks[i].clips.numItems; j++) {
+      const currentClip = tracks[i].clips[j];
+      if (currentClip.isSelected()) {
+        return {
+          clip: currentClip,
+          trackIndex: i,
+          clipIndex: j
+        }
+      }
+    }
+  }
+  return null;
 }

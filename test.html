@@ -56,10 +56,18 @@
     var socket = io.connect('http://localhost:42300');
     input.onkeypress = function(event) {
       if (event.keyCode === 13) {
-        socket.emit("hello", input.value);
+        console.log("Starting!")
+        window.setInterval(zoomIn, 1);
         return false;
       }
     };
+    let i = 50;
+    function zoomIn() {
+      socket.emit("zoom", i);
+      console.log("Sent: " + i);
+      i++;
+    }
+
   </script>
 </body>
 </html>
