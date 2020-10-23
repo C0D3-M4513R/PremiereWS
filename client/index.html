@@ -9,7 +9,7 @@
     <script type="text/javascript" src="index.js"></script>
 </head>
 
-<!-- COG & ARROW from https://fontawesome.com/license released under CC4 -->
+<!-- Symbols from https://fontawesome.com/license released under CC4 -->
 
 <body ondblclick="openHostWindow()">
     <div class="visible" id="defaultView">
@@ -18,12 +18,11 @@
         <div id="lastCommandContainer">Last Command...</div>
     </div>
     <div class="notSoVisible" id="settingsView">
-        <select id="inputSelect">
-            <option>A</option>
-            <option>B</option>
-            <option>C</option>
-        </select>
-        <div id="arrow" class="upperRight" onclick="changeView(false)"></div>
+        <div id="fixMyShit">
+            <input type="number" id="portInput" min="0" max="65535">
+            <div id="restart" onclick="restartServer(document.getElementById('portInput').value)"></div>
+            <div id="arrow" class="upperRight" onclick="changeView(false)"></div>
+        </div>
     </div>
     <script type="text/javascript">
         init();

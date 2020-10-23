@@ -19,8 +19,13 @@ var demo = {
             case "move":
                 break;
         }
+        return true;
     }
 };
+
+
+
+
 function setZoomOfCurrentClip(zoomLevel) {
     var clipInfo = getFirstSelectedClip(true);
     var scaleInfo = clipInfo.clip.components[1].properties[1];

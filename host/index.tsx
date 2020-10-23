@@ -19,26 +19,60 @@ var demo = {
   },
   receiveEvent: function (data: WSEvent) {
     switch (data.name) {
+      case "move":
+        break;
       case "zoom":
         break;
-      case "move":
+      case "rotate":
+        break;
+      case "opacity":
+        break;
+      case "audio":
+        break;
+      case "lumetri":
         break;
     }
   }
 }
 
-type WSEvent = ZoomEvent | MoveEvent;
+type WSEvent = ZoomEvent | MoveEvent | RotateEvent | OpacityEvent | AudioLevelEvent | LumetriEvent;
 
-interface ZoomEvent {
-  name: "zoom";
-  zoomLevel?: number
-  zoomDelta?: number
-}
 
-interface MoveEvent{
-  name: "move";
+interface MoveEvent {
+  name: "move"
   deltaX: number
   deltaY: number
+}
+
+interface ZoomEvent {
+  name: "zoom"
+  level?: number
+  delta?: number
+}
+
+interface RotateEvent {
+  name: "rotate"
+  level?: number
+  delta?: number
+}
+
+interface OpacityEvent {
+  name: "opacity"
+  level?: number
+  delta?: number
+}
+
+interface AudioLevelEvent {
+  name: "audio"
+  level?: number
+  delta?: number
+}
+
+interface LumetriEvent {
+  name: "lumetri"
+  property: number
+  level?: number
+  delta?: number
 }
 
 function setZoomOfCurrentClip(zoomLevel: number): boolean {
