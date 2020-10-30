@@ -1,3 +1,4 @@
+//@include "json.jsx";
 /// <reference path="../typings/JavaScript.d.ts"/>
 /// <reference path="../typings/PlugPlugExternalObject.d.ts"/>
 /// <reference path="../typings/PremierePro.14.0.d.ts"/>
@@ -12,20 +13,35 @@ var demo = {
         setZoomOfCurrentClip(zoomLevel);
         return true;
     },
-    receiveEvent: function (data) {
+    receiveEvent: function (dataString) {
+        var data = JSON.eval(dataString); // No problem, lul
         switch (data.name) {
-            case "zoom":
-                break;
             case "move":
+                moveCurrentClip(data.deltaX, data.deltaY);
+                break;
+            case "zoom":
+                // TODO: Implement this (1)
+                break;
+            case "rotate":
+                // TODO: Implement this (2)
+                break;
+            case "opacity":
+                // TODO: Implement this (3)
+                // TODO: (4) Write MIDI Client
+                break;
+            case "audio":
+                break;
+            case "lumetri":
                 break;
         }
-        return true;
     }
 };
-
-
-
-
+function moveCurrentClip(deltaX, deltaY) {
+    var clipInfo = getFirstSelectedClip(true);
+    var positionInfo = clipInfo.clip.components[1].properties[0];
+    var _a = positionInfo.getValue(), positionX = _a[0], positionY = _a[1];
+    positionInfo.setValue([positionX + deltaX, positionY + deltaY], true);
+}
 function setZoomOfCurrentClip(zoomLevel) {
     var clipInfo = getFirstSelectedClip(true);
     var scaleInfo = clipInfo.clip.components[1].properties[1];
