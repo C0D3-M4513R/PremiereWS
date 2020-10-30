@@ -48,7 +48,7 @@ function restartServer(serverPort) {
             if (ready) {
                 ready = false;
                 document.getElementById('lastCommandContainer').innerHTML = 'Event: ' + data.name;
-                csInterface.evalScript("demo.receiveEvent(" + data + ");", function () {
+                csInterface.evalScript("demo.receiveEvent('" + JSON.stringify(data) + "');", function () {
                     ready = true;
                 })
             } else {
