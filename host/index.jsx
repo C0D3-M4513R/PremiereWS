@@ -1,4 +1,3 @@
-//@include "json.jsx";
 /// <reference path="../typings/JavaScript.d.ts"/>
 /// <reference path="../typings/PlugPlugExternalObject.d.ts"/>
 /// <reference path="../typings/PremierePro.14.0.d.ts"/>
@@ -13,8 +12,7 @@ var demo = {
         setZoomOfCurrentClip(zoomLevel);
         return true;
     },
-    receiveEvent: function (dataString) {
-        var data = JSON.eval(dataString); // No problem, lul
+    receiveEvent: function (data) {
         switch (data.name) {
             case "move":
                 moveCurrentClip(data.deltaX, data.deltaY);
@@ -46,7 +44,6 @@ function setZoomOfCurrentClip(zoomLevel) {
     var clipInfo = getFirstSelectedClip(true);
     var scaleInfo = clipInfo.clip.components[1].properties[1];
     scaleInfo.setValue(zoomLevel, true);
-    return true;
 }
 function getFirstSelectedClip(videoClip) {
     var currentSequence = app.project.activeSequence;
