@@ -62,12 +62,11 @@
         return false;
       }
     };
-    let i = 50;
+    let i = 1;
     function zoomIn() {
       socket.emit("event", {
-        name: "move",
-        deltaX: 0.01,
-        deltaY: 0
+        name: "audio",
+        delta: 0.1
       });
       console.log("Sent: " + i);
       i++;

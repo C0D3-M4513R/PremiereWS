@@ -4,30 +4,30 @@ interface MoveEvent {
   name: "move"
   deltaX: number
   deltaY: number
+  reset?: boolean // sets position back to 0.5, 0.5
 }
 
 interface ZoomEvent {
   name: "zoom"
   level?: number
-  delta?: number
+  delta?: number 
 }
 
 interface RotateEvent {
   name: "rotate"
-  level?: number
-  delta?: number
+  level?: number // 0 to 360+
+  delta?: number 
 }
 
 interface OpacityEvent {
   name: "opacity"
-  level?: number
+  level?: number // between 0 and 100
   delta?: number
 }
 
 interface AudioLevelEvent {
   name: "audio"
-  level?: number
-  delta?: number
+  delta: number
 }
 
 interface LumetriEvent {

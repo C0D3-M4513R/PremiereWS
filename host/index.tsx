@@ -20,37 +20,104 @@ var demo = {
   receiveEvent: function (data: WSEvent) {
     switch (data.name) {
       case "move":
-        moveCurrentClip(data.deltaX, data.deltaY)
+        if (data.reset) {
+          resetPositionOfCurrentClip();
+        } else {
+          moveCurrentClip(data.deltaX, data.deltaY)
+        }
         break;
       case "zoom":
-        // TODO: Implement this (1)
+        if (data.delta) {
+          changeZoomOfCurrentClip(data.delta)
+        } else if (data.level) {
+          setZoomOfCurrentClip(data.level);
+        }
         break;
       case "rotate":
-        // TODO: Implement this (2)
+        if (data.delta) {
+          rotateCurrentClip(data.delta)
+        } else if (data.level) {
+          setRotationOfCurrentClip(data.level);
+        }
         break;
       case "opacity":
-        // TODO: Implement this (3)
-        // TODO: (4) Write MIDI Client
+        if (data.delta) {
+          changeOpacityOfCurrentClip(data.delta)
+        } else if (data.level) {
+          setOpacityOfCurrentClip(data.level);
+        }
         break;
       case "audio":
+        changeAudioLevel(data.delta);
         break;
       case "lumetri":
+
+        // TODO (1): Implement
+        // TODO (2): Create enum-like structure for easier property selection
         break;
     }
   }
 }
 
 function moveCurrentClip(deltaX: number, deltaY: number) {
-  const clipInfo = getFirstSelectedClip(true);
-  const positionInfo = clipInfo.clip.components[1].properties[0];
-  const [positionX, positionY] = positionInfo.getValue();
-  positionInfo.setValue([positionX + deltaX, positionY + deltaY], true);
+  const clipInfo = getFirstSelectedClip(true)
+  const positionInfo = clipInfo.clip.components[1].properties[0]
+  const [positionX, positionY] = positionInfo.getValue()
+  positionInfo.setValue([positionX + deltaX, positionY + deltaY], true)
+}
+
+function resetPositionOfCurrentClip() {
+  const clipInfo = getFirstSelectedClip(true)
+  const positionInfo = clipInfo.clip.components[1].properties[0]
+  positionInfo.setValue([0.5, 0.5], true)
 }
 
 function setZoomOfCurrentClip(zoomLevel: number) {
-  const clipInfo = getFirstSelectedClip(true);
-  const scaleInfo = clipInfo.clip.components[1].properties[1];
-  scaleInfo.setValue(zoomLevel, true);
+  const clipInfo = getFirstSelectedClip(true)
+  const scaleInfo = clipInfo.clip.components[1].properties[1]
+  scaleInfo.setValue(zoomLevel, true)
+}
+
+function changeZoomOfCurrentClip(delta: number) {
+  const clipInfo = getFirstSelectedClip(true)
+  const scaleInfo = clipInfo.clip.components[1].properties[1]
+  const current: number = scaleInfo.getValue()
+  scaleInfo.setValue(current + delta, true);
+}
+
+function setRotationOfCurrentClip(level: number) {
+  const clipInfo = getFirstSelectedClip(true)
+  const info = clipInfo.clip.components[1].properties[4]
+  info.setValue(level, true)
+}
+
+function rotateCurrentClip(delta: number) {
+  const clipInfo = getFirstSelectedClip(true)
+  const info = clipInfo.clip.components[1].properties[4]
+  const current: number = info.getValue()
+  info.setValue(current + delta, true)
+}
+
+function setOpacityOfCurrentClip(level: number) {
+  const clipInfo = getFirstSelectedClip(true)
+  const info = clipInfo.clip.components[0].properties[0]
+  info.setValue(level, true)
+}
+
+function changeOpacityOfCurrentClip(delta: number) {
+  const clipInfo = getFirstSelectedClip(true)
+  const info = clipInfo.clip.components[0].properties[0]
+  const current: number = info.getValue()
+  info.setValue(current + delta, true)
+}
+
+function changeAudioLevel(levelInDb: number) {
+  const clipInfo = getFirstSelectedClip(false)
+  const levelInfo = clipInfo.clip.components[0].properties[1];
+  const level = 20 * Math.log(parseFloat(levelInfo.getValue())) * Math.LOG10E + 15;
+  const newLevel = level + levelInDb;
+  const encodedLevel = Math.min(Math.pow(10, (newLevel - 15)/20), 1.0);
+  levelInfo.setValue(encodedLevel, true);
 }
 
 function getFirstSelectedClip(videoClip: boolean) {
