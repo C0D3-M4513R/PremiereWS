@@ -1,4 +1,3 @@
-//@include "json.jsx";
 /// <reference path="../typings/JavaScript.d.ts"/>
 /// <reference path="../typings/PlugPlugExternalObject.d.ts"/>
 /// <reference path="../typings/PremierePro.14.0.d.ts"/>
@@ -18,8 +17,7 @@ var demo = {
     setZoomOfCurrentClip(zoomLevel);
     return true;
   },
-  receiveEvent: function (dataString: string) {
-    const data = JSON.eval(dataString) as WSEvent // No problem, lul
+  receiveEvent: function (data: WSEvent) {
     switch (data.name) {
       case "move":
         moveCurrentClip(data.deltaX, data.deltaY)
@@ -42,61 +40,20 @@ var demo = {
   }
 }
 
-type WSEvent = ZoomEvent | MoveEvent | RotateEvent | OpacityEvent | AudioLevelEvent | LumetriEvent;
-
-
-interface MoveEvent {
-  name: "move"
-  deltaX: number
-  deltaY: number
-}
-
-interface ZoomEvent {
-  name: "zoom"
-  level?: number
-  delta?: number
-}
-
-interface RotateEvent {
-  name: "rotate"
-  level?: number
-  delta?: number
-}
-
-interface OpacityEvent {
-  name: "opacity"
-  level?: number
-  delta?: number
-}
-
-interface AudioLevelEvent {
-  name: "audio"
-  level?: number
-  delta?: number
-}
-
-interface LumetriEvent {
-  name: "lumetri"
-  property: number
-  level?: number
-  delta?: number
-}
-
 function moveCurrentClip(deltaX: number, deltaY: number) {
-  const clipInfo = getFirstSelectedClip(true)
+  const clipInfo = getFirstSelectedClip(true);
   const positionInfo = clipInfo.clip.components[1].properties[0];
   const [positionX, positionY] = positionInfo.getValue();
   positionInfo.setValue([positionX + deltaX, positionY + deltaY], true);
 }
 
-function setZoomOfCurrentClip(zoomLevel: number): boolean {
-  const clipInfo = getFirstSelectedClip(true)
+function setZoomOfCurrentClip(zoomLevel: number) {
+  const clipInfo = getFirstSelectedClip(true);
   const scaleInfo = clipInfo.clip.components[1].properties[1];
   scaleInfo.setValue(zoomLevel, true);
-  return true;
 }
 
-function getFirstSelectedClip(videoClip: Boolean) {
+function getFirstSelectedClip(videoClip: boolean) {
   const currentSequence = app.project.activeSequence;
   const tracks = videoClip ? currentSequence.videoTracks : currentSequence.audioTracks;
   for (let i = 0; i < tracks.numTracks; i++) {
