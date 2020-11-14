@@ -3,10 +3,16 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.jsx",
-  "dependencies": {},
-  "devDependencies": {},
+  "dependencies": {
+    "tsc": "^1.20150623.0",
+    "typescript": "^4.0.5"
+  },
+  "devDependencies": {
+    "typedoc": "^0.19.2"
+  },
   "scripts": {
-    "run": "tsc index.tsx --outfile index.jsx --watch"
+    "run": "tsc index.tsx --outfile index.jsx --watch",
+    "docgen": "typedoc --ignoreCompilerErrors --mode file --out docs --theme minimal index.tsx events.ts"
   },
   "keywords": [],
   "author": "",
