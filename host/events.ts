@@ -9,6 +9,7 @@ interface AbsoluteEvent extends WSEvent{
 interface RelativeEvent extends WSEvent{
   delta?:number
 }
+interface RegularEvent extends RelativeEvent,AbsoluteEvent{}
 interface ResetEvent extends WSEvent{
   reset?:boolean
 }
@@ -20,19 +21,19 @@ interface MoveEvent extends ResetEvent{
   // reset?: boolean // sets position back to 0.5, 0.5
 }
 
-interface ZoomEvent extends AbsoluteEvent,RelativeEvent{
+interface ZoomEvent extends RegularEvent{
   name: "zoom"
   // level?: number
   // delta?: number
 }
 
-interface RotateEvent extends AbsoluteEvent,RelativeEvent{
+interface RotateEvent extends RegularEvent{
   name: "rotate"
   // level?: number // 0 to 360+
   // delta?: number
 }
 
-interface OpacityEvent extends AbsoluteEvent,RelativeEvent {
+interface OpacityEvent extends RegularEvent {
   name: "opacity"
   // level?: number // between 0 and 100
   // delta?: number
@@ -43,7 +44,7 @@ interface AudioLevelEvent extends RelativeEvent {
   // delta: number
 }
 
-interface LumetriEvent extends AbsoluteEvent,RelativeEvent {
+interface LumetriEvent extends RegularEvent {
   name: "lumetri"
   property: number
   // level?: number
