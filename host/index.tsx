@@ -4,10 +4,26 @@
 /// <reference path="../typings/XMPScript.d.ts"/>
 /// <reference path="../typings/extendscript.d.ts"/>
 /// <reference path="../typings/global.d.ts"/>
+/// <reference path="events.ts"/>
 
 declare interface Track {
   overwriteClip(clipProjectItem: ProjectItem, time: Time): void;
 }
+
+//Tell TypeScript, if something is of a particular type
+function castRelativeEvent(data:WSEvent): data is RelativeEvent{
+  return "delta" in data
+}
+function castAbsoluteEvent(data:WSEvent): data is AbsoluteEvent{
+  return "level" in data
+}
+function castResetEvent(data:WSEvent): data is ResetEvent{
+  return "reset" in data
+}
+function castMoveEvent(data:WSEvent): data is MoveEvent{
+  return "move"===data.name
+}
+
 
 var demo = {
   showMsg: function () {
@@ -20,35 +36,37 @@ var demo = {
   receiveEvent: function (data: WSEvent) {
     switch (data.name) {
       case "move":
-        if (data.reset) {
+        if (castResetEvent(data)&&data.reset) {
           resetPositionOfCurrentClip();
-        } else {
+        } else if (castMoveEvent(data)){
           moveCurrentClip(data.deltaX, data.deltaY)
         }
         break;
       case "zoom":
-        if (data.delta) {
+        if (castRelativeEvent(data)&&data.delta) {
           changeZoomOfCurrentClip(data.delta)
-        } else if (data.level) {
+        } else if (castAbsoluteEvent(data)&&data.level) {
           setZoomOfCurrentClip(data.level);
         }
         break;
       case "rotate":
-        if (data.delta) {
+        if (castRelativeEvent(data)&&data.delta) {
           rotateCurrentClip(data.delta)
-        } else if (data.level) {
+        } else if (castAbsoluteEvent(data)&&data.level) {
           setRotationOfCurrentClip(data.level);
         }
         break;
       case "opacity":
-        if (data.delta) {
+        if (castRelativeEvent(data)&&data.delta) {
           changeOpacityOfCurrentClip(data.delta)
-        } else if (data.level) {
+        } else if (castAbsoluteEvent(data)&&data.level) {
           setOpacityOfCurrentClip(data.level);
         }
         break;
       case "audio":
-        changeAudioLevel(data.delta);
+        if(castRelativeEvent(data)&&data.delta){
+          changeAudioLevel(data.delta);
+        }
         break;
       case "lumetri":
 

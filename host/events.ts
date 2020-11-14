@@ -1,38 +1,51 @@
-type WSEvent = ZoomEvent | MoveEvent | RotateEvent | OpacityEvent | AudioLevelEvent | LumetriEvent;
+// type WSEvent = ZoomEvent | MoveEvent | RotateEvent | OpacityEvent | AudioLevelEvent | LumetriEvent;
 
-interface MoveEvent {
+interface WSEvent{
+  name:string
+}
+interface AbsoluteEvent extends WSEvent{
+  level?:number
+}
+interface RelativeEvent extends WSEvent{
+  delta?:number
+}
+interface ResetEvent extends WSEvent{
+  reset?:boolean
+}
+
+interface MoveEvent extends ResetEvent{
   name: "move"
-  deltaX: number
-  deltaY: number
-  reset?: boolean // sets position back to 0.5, 0.5
+  deltaX: number//TODO: make this fit in with RelativeEvent
+  deltaY: number//      maybe have delta and level in Relative and Absolute be a typevariable and have delta be an array?
+  // reset?: boolean // sets position back to 0.5, 0.5
 }
 
-interface ZoomEvent {
+interface ZoomEvent extends AbsoluteEvent,RelativeEvent{
   name: "zoom"
-  level?: number
-  delta?: number 
+  // level?: number
+  // delta?: number
 }
 
-interface RotateEvent {
+interface RotateEvent extends AbsoluteEvent,RelativeEvent{
   name: "rotate"
-  level?: number // 0 to 360+
-  delta?: number 
+  // level?: number // 0 to 360+
+  // delta?: number
 }
 
-interface OpacityEvent {
+interface OpacityEvent extends AbsoluteEvent,RelativeEvent {
   name: "opacity"
-  level?: number // between 0 and 100
-  delta?: number
+  // level?: number // between 0 and 100
+  // delta?: number
 }
 
-interface AudioLevelEvent {
+interface AudioLevelEvent extends RelativeEvent {
   name: "audio"
-  delta: number
+  // delta: number
 }
 
-interface LumetriEvent {
+interface LumetriEvent extends AbsoluteEvent,RelativeEvent {
   name: "lumetri"
   property: number
-  level?: number
-  delta?: number
+  // level?: number
+  // delta?: number
 }

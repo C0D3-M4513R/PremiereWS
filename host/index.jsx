@@ -1,9 +1,24 @@
+// type WSEvent = ZoomEvent | MoveEvent | RotateEvent | OpacityEvent | AudioLevelEvent | LumetriEvent;
 /// <reference path="../typings/JavaScript.d.ts"/>
 /// <reference path="../typings/PlugPlugExternalObject.d.ts"/>
 /// <reference path="../typings/PremierePro.14.0.d.ts"/>
 /// <reference path="../typings/XMPScript.d.ts"/>
 /// <reference path="../typings/extendscript.d.ts"/>
 /// <reference path="../typings/global.d.ts"/>
+/// <reference path="events.ts"/>
+//Tell TypeScript, if something is of a particular type
+function castRelativeEvent(data) {
+    return "delta" in data;
+}
+function castAbsoluteEvent(data) {
+    return "level" in data;
+}
+function castResetEvent(data) {
+    return "reset" in data;
+}
+function castMoveEvent(data) {
+    return "move" === data.name;
+}
 var demo = {
     showMsg: function () {
         alert("Hello World!");
@@ -15,39 +30,41 @@ var demo = {
     receiveEvent: function (data) {
         switch (data.name) {
             case "move":
-                if (data.reset) {
+                if (castResetEvent(data) && data.reset) {
                     resetPositionOfCurrentClip();
                 }
-                else {
+                else if (castMoveEvent(data)) {
                     moveCurrentClip(data.deltaX, data.deltaY);
                 }
                 break;
             case "zoom":
-                if (data.delta) {
+                if (castRelativeEvent(data) && data.delta) {
                     changeZoomOfCurrentClip(data.delta);
                 }
-                else if (data.level) {
+                else if (castAbsoluteEvent(data) && data.level) {
                     setZoomOfCurrentClip(data.level);
                 }
                 break;
             case "rotate":
-                if (data.delta) {
+                if (castRelativeEvent(data) && data.delta) {
                     rotateCurrentClip(data.delta);
                 }
-                else if (data.level) {
+                else if (castAbsoluteEvent(data) && data.level) {
                     setRotationOfCurrentClip(data.level);
                 }
                 break;
             case "opacity":
-                if (data.delta) {
+                if (castRelativeEvent(data) && data.delta) {
                     changeOpacityOfCurrentClip(data.delta);
                 }
-                else if (data.level) {
+                else if (castAbsoluteEvent(data) && data.level) {
                     setOpacityOfCurrentClip(data.level);
                 }
                 break;
             case "audio":
-                changeAudioLevel(data.delta);
+                if (castRelativeEvent(data) && data.delta) {
+                    changeAudioLevel(data.delta);
+                }
                 break;
             case "lumetri":
                 // TODO (1): Implement
