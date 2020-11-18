@@ -11,19 +11,15 @@ declare interface Track {
 }
 
 //Tell TypeScript, if something is of a particular type
-function castRelativeEvent(data:WSEvent): data is RelativeEvent{
+function castRelativeEvent<D>(data:WSEvent): data is RelativeEvent<D>{
   return "delta" in data
 }
-function castAbsoluteEvent(data:WSEvent): data is AbsoluteEvent{
+function castAbsoluteEvent<D>(data:WSEvent): data is AbsoluteEvent<D>{
   return "level" in data
 }
 function castResetEvent(data:WSEvent): data is ResetEvent{
   return "reset" in data
 }
-function castMoveEvent(data:WSEvent): data is MoveEvent{
-  return "move"===data.name
-}
-
 
 var demo = {
   showMsg: function () {
@@ -32,25 +28,34 @@ var demo = {
   receiveEvent: function (data: WSEvent) {
     switch (data.name) {
       case "move":
-        if (castResetEvent(data)&&data.reset) {
-          modifyClip(new ModifyInfo(1,0),() => {
-            return [0.5,0.5]
+        if (castResetEvent(data) && data.reset) {
+          modifyClip(new ModifyInfo(1, 0), () => {
+            return [0.5, 0.5]
           })
-        } else if (castMoveEvent(data)){
-          modifyClip(new ModifyInfo(1,0),(info) => {
-            const value=info.getValue()
-            return [value[0]+data.deltaX,value[1]+data.deltaY]
+        } else if (castRelativeEvent(data)) {
+          modifyClip(new ModifyInfo(1, 0), (info) => {
+                const value = info.getValue()
+                return [value[0] + data.delta[0], value[1] + data.delta[1]]
+              }
+          )
+        } else if (castAbsoluteEvent(data)) {
+          modifyClip(new ModifyInfo(1, 0), () => {
+            return [data.level[0], data.level[1]]
           })
         }
         break;
       case "zoom":
-        if (castRelativeEvent(data)&&data.delta) {
-          modifyClip(new ModifyInfo(1,1),(info) => {
-            return info.getValue()+data.delta
+        if (castRelativeEvent(data) && data.delta) {
+          modifyClip(new ModifyInfo(1, 1), (info) => {
+            return info.getValue() + data.delta
           })
-        } else if (castAbsoluteEvent(data)&&data.level) {
-          modifyClip(new ModifyInfo(1,1),() => {
+        } else if (castAbsoluteEvent(data) && data.level) {
+          modifyClip(new ModifyInfo(1, 1), () => {
             return data.level
+          })
+        } else if (castResetEvent(data) && data.reset) {
+          modifyClip(new ModifyInfo(1, 1), () => {
+            return 100
           })
         }
         break;
@@ -63,6 +68,10 @@ var demo = {
           modifyClip(new ModifyInfo(1,4),() => {
             return data.level
           })
+        }else if (castResetEvent(data)&&data.reset) {
+          modifyClip(new ModifyInfo(1,4),() => {
+            return 0
+          })
         }
         break;
       case "opacity":
@@ -74,12 +83,24 @@ var demo = {
           modifyClip(new ModifyInfo(0,0),() => {
             return data.level
           })
+        } else if (castResetEvent(data)&&data.reset) {
+          modifyClip(new ModifyInfo(0,0),() => {
+            return 100
+          })
         }
         break;
       case "audio":
         if(castRelativeEvent(data)&&data.delta){
-          modifyClip(new ModifyInfo(0,0),(info) => {
+          modifyClip(new ModifyInfo(0,1),(info) => {
             return levelToDB(dbToLevel(parseFloat(info.getValue()))+data.delta)
+          })
+        }else if(castAbsoluteEvent(data)&&data.level){
+          modifyClip(new ModifyInfo(0,1),() => {
+            return levelToDB(data.level)
+          })
+        }else if(castResetEvent(data)&&data.reset){
+          modifyClip(new ModifyInfo(0,1),() => {
+            return levelToDB(0)
           })
         }
         break;

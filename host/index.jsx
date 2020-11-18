@@ -16,9 +16,6 @@ function castAbsoluteEvent(data) {
 function castResetEvent(data) {
     return "reset" in data;
 }
-function castMoveEvent(data) {
-    return "move" === data.name;
-}
 var demo = {
     showMsg: function () {
         alert("Hello World!");
@@ -31,10 +28,15 @@ var demo = {
                         return [0.5, 0.5];
                     });
                 }
-                else if (castMoveEvent(data)) {
+                else if (castRelativeEvent(data)) {
                     modifyClip(new ModifyInfo(1, 0), function (info) {
                         var value = info.getValue();
-                        return [value[0] + data.deltaX, value[1] + data.deltaY];
+                        return [value[0] + data.delta[0], value[1] + data.delta[1]];
+                    });
+                }
+                else if (castAbsoluteEvent(data)) {
+                    modifyClip(new ModifyInfo(1, 0), function () {
+                        return [data.level[0], data.level[1]];
                     });
                 }
                 break;
@@ -49,6 +51,11 @@ var demo = {
                         return data.level;
                     });
                 }
+                else if (castResetEvent(data) && data.reset) {
+                    modifyClip(new ModifyInfo(1, 1), function () {
+                        return 100;
+                    });
+                }
                 break;
             case "rotate":
                 if (castRelativeEvent(data) && data.delta) {
@@ -59,6 +66,11 @@ var demo = {
                 else if (castAbsoluteEvent(data) && data.level) {
                     modifyClip(new ModifyInfo(1, 4), function () {
                         return data.level;
+                    });
+                }
+                else if (castResetEvent(data) && data.reset) {
+                    modifyClip(new ModifyInfo(1, 4), function () {
+                        return 0;
                     });
                 }
                 break;
@@ -73,11 +85,26 @@ var demo = {
                         return data.level;
                     });
                 }
+                else if (castResetEvent(data) && data.reset) {
+                    modifyClip(new ModifyInfo(0, 0), function () {
+                        return 100;
+                    });
+                }
                 break;
             case "audio":
                 if (castRelativeEvent(data) && data.delta) {
-                    modifyClip(new ModifyInfo(0, 0), function (info) {
+                    modifyClip(new ModifyInfo(0, 1), function (info) {
                         return levelToDB(dbToLevel(parseFloat(info.getValue())) + data.delta);
+                    });
+                }
+                else if (castAbsoluteEvent(data) && data.level) {
+                    modifyClip(new ModifyInfo(0, 1), function () {
+                        return levelToDB(data.level);
+                    });
+                }
+                else if (castResetEvent(data) && data.reset) {
+                    modifyClip(new ModifyInfo(0, 1), function () {
+                        return levelToDB(0);
                     });
                 }
                 break;
