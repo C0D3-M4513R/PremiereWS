@@ -23,47 +23,62 @@ var demo = {
     showMsg: function () {
         alert("Hello World!");
     },
-    setZoom: function (zoomLevel) {
-        setZoomOfCurrentClip(zoomLevel);
-        return true;
-    },
     receiveEvent: function (data) {
         switch (data.name) {
             case "move":
                 if (castResetEvent(data) && data.reset) {
-                    resetPositionOfCurrentClip();
+                    modifyClip(new ModifyInfo(1, 0), function () {
+                        return [0.5, 0.5];
+                    });
                 }
                 else if (castMoveEvent(data)) {
-                    moveCurrentClip(data.deltaX, data.deltaY);
+                    modifyClip(new ModifyInfo(1, 0), function (info) {
+                        var value = info.getValue();
+                        return [value[0] + data.deltaX, value[1] + data.deltaY];
+                    });
                 }
                 break;
             case "zoom":
                 if (castRelativeEvent(data) && data.delta) {
-                    changeZoomOfCurrentClip(data.delta);
+                    modifyClip(new ModifyInfo(1, 1), function (info) {
+                        return info.getValue() + data.delta;
+                    });
                 }
                 else if (castAbsoluteEvent(data) && data.level) {
-                    setZoomOfCurrentClip(data.level);
+                    modifyClip(new ModifyInfo(1, 1), function () {
+                        return data.level;
+                    });
                 }
                 break;
             case "rotate":
                 if (castRelativeEvent(data) && data.delta) {
-                    rotateCurrentClip(data.delta);
+                    modifyClip(new ModifyInfo(1, 4), function (info) {
+                        return info.getValue() + data.delta;
+                    });
                 }
                 else if (castAbsoluteEvent(data) && data.level) {
-                    setRotationOfCurrentClip(data.level);
+                    modifyClip(new ModifyInfo(1, 4), function () {
+                        return data.level;
+                    });
                 }
                 break;
             case "opacity":
                 if (castRelativeEvent(data) && data.delta) {
-                    changeOpacityOfCurrentClip(data.delta);
+                    modifyClip(new ModifyInfo(0, 0), function (info) {
+                        return info.getValue() + data.delta;
+                    });
                 }
                 else if (castAbsoluteEvent(data) && data.level) {
-                    setOpacityOfCurrentClip(data.level);
+                    modifyClip(new ModifyInfo(0, 0), function () {
+                        return data.level;
+                    });
                 }
                 break;
             case "audio":
                 if (castRelativeEvent(data) && data.delta) {
-                    changeAudioLevel(data.delta);
+                    modifyClip(new ModifyInfo(0, 0), function (info) {
+                        return levelToDB(dbToLevel(parseFloat(info.getValue())) + data.delta);
+                    });
                 }
                 break;
             case "lumetri":
@@ -73,57 +88,32 @@ var demo = {
         }
     }
 };
-function moveCurrentClip(deltaX, deltaY) {
-    var clipInfo = getFirstSelectedClip(true);
-    var positionInfo = clipInfo.clip.components[1].properties[0];
-    var _a = positionInfo.getValue(), positionX = _a[0], positionY = _a[1];
-    positionInfo.setValue([positionX + deltaX, positionY + deltaY], true);
+var ModifyInfo = /** @class */ (function () {
+    function ModifyInfo(component, property, videoClip, setInfoBool) {
+        if (videoClip === void 0) { videoClip = true; }
+        if (setInfoBool === void 0) { setInfoBool = true; }
+        this.component = component;
+        this.property = property;
+        this.videoClip = videoClip;
+        this.setInfoBool = setInfoBool;
+    }
+    return ModifyInfo;
+}());
+/**
+ * Modify the clip according
+ * @param setting Which clip should get modified?
+ * @param processor How should that clip get modified?
+ */
+function modifyClip(setting, processor) {
+    var clipInfo = getFirstSelectedClip(setting.videoClip);
+    var info = clipInfo.clip.components[setting.component].properties[setting.property];
+    info.setValue(processor(info), setting.setInfoBool);
 }
-function resetPositionOfCurrentClip() {
-    var clipInfo = getFirstSelectedClip(true);
-    var positionInfo = clipInfo.clip.components[1].properties[0];
-    positionInfo.setValue([0.5, 0.5], true);
+function dbToLevel(db) {
+    return 20 * Math.log(db) * Math.LOG10E + 15;
 }
-function setZoomOfCurrentClip(zoomLevel) {
-    var clipInfo = getFirstSelectedClip(true);
-    var scaleInfo = clipInfo.clip.components[1].properties[1];
-    scaleInfo.setValue(zoomLevel, true);
-}
-function changeZoomOfCurrentClip(delta) {
-    var clipInfo = getFirstSelectedClip(true);
-    var scaleInfo = clipInfo.clip.components[1].properties[1];
-    var current = scaleInfo.getValue();
-    scaleInfo.setValue(current + delta, true);
-}
-function setRotationOfCurrentClip(level) {
-    var clipInfo = getFirstSelectedClip(true);
-    var info = clipInfo.clip.components[1].properties[4];
-    info.setValue(level, true);
-}
-function rotateCurrentClip(delta) {
-    var clipInfo = getFirstSelectedClip(true);
-    var info = clipInfo.clip.components[1].properties[4];
-    var current = info.getValue();
-    info.setValue(current + delta, true);
-}
-function setOpacityOfCurrentClip(level) {
-    var clipInfo = getFirstSelectedClip(true);
-    var info = clipInfo.clip.components[0].properties[0];
-    info.setValue(level, true);
-}
-function changeOpacityOfCurrentClip(delta) {
-    var clipInfo = getFirstSelectedClip(true);
-    var info = clipInfo.clip.components[0].properties[0];
-    var current = info.getValue();
-    info.setValue(current + delta, true);
-}
-function changeAudioLevel(levelInDb) {
-    var clipInfo = getFirstSelectedClip(false);
-    var levelInfo = clipInfo.clip.components[0].properties[1];
-    var level = 20 * Math.log(parseFloat(levelInfo.getValue())) * Math.LOG10E + 15;
-    var newLevel = level + levelInDb;
-    var encodedLevel = Math.min(Math.pow(10, (newLevel - 15) / 20), 1.0);
-    levelInfo.setValue(encodedLevel, true);
+function levelToDB(level) {
+    return Math.min(Math.pow(10, (level - 15) / 20), 1.0);
 }
 function getFirstSelectedClip(videoClip) {
     var currentSequence = app.project.activeSequence;
