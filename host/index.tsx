@@ -26,93 +26,13 @@ var demo = {
     alert("Hello World!")
   },
   receiveEvent: function (data: WSEvent) {
-    switch (data.name) {
-      case "move":
-        if (castResetEvent(data) && data.reset) {
-          modifyClip(new ModifyInfo(1, 0), () => {
-            return [0.5, 0.5]
-          })
-        } else if (castRelativeEvent(data)) {
-          modifyClip(new ModifyInfo(1, 0), (info) => {
-                const value = info.getValue()
-                return [value[0] + data.delta[0], value[1] + data.delta[1]]
-              }
-          )
-        } else if (castAbsoluteEvent(data)) {
-          modifyClip(new ModifyInfo(1, 0), () => {
-            return [data.level[0], data.level[1]]
-          })
-        }
-        break;
-      case "zoom":
-        if (castRelativeEvent(data) && data.delta) {
-          modifyClip(new ModifyInfo(1, 1), (info) => {
-            return info.getValue() + data.delta
-          })
-        } else if (castAbsoluteEvent(data) && data.level) {
-          modifyClip(new ModifyInfo(1, 1), () => {
-            return data.level
-          })
-        } else if (castResetEvent(data) && data.reset) {
-          modifyClip(new ModifyInfo(1, 1), () => {
-            return 100
-          })
-        }
-        break;
-      case "rotate":
-        if (castRelativeEvent(data)&&data.delta) {
-          modifyClip(new ModifyInfo(1,4),(info) => {
-            return info.getValue()+data.delta
-          })
-        } else if (castAbsoluteEvent(data)&&data.level) {
-          modifyClip(new ModifyInfo(1,4),() => {
-            return data.level
-          })
-        }else if (castResetEvent(data)&&data.reset) {
-          modifyClip(new ModifyInfo(1,4),() => {
-            return 0
-          })
-        }
-        break;
-      case "opacity":
-        if (castRelativeEvent(data)&&data.delta) {
-          modifyClip(new ModifyInfo(0,0),(info) => {
-            return info.getValue()+data.delta
-          })
-        } else if (castAbsoluteEvent(data)&&data.level) {
-          modifyClip(new ModifyInfo(0,0),() => {
-            return data.level
-          })
-        } else if (castResetEvent(data)&&data.reset) {
-          modifyClip(new ModifyInfo(0,0),() => {
-            return 100
-          })
-        }
-        break;
-      case "audio":
-        if(castRelativeEvent(data)&&data.delta){
-          modifyClip(new ModifyInfo(0,1),(info) => {
-            return levelToDB(dbToLevel(parseFloat(info.getValue()))+data.delta)
-          })
-        }else if(castAbsoluteEvent(data)&&data.level){
-          modifyClip(new ModifyInfo(0,1),() => {
-            return levelToDB(data.level)
-          })
-        }else if(castResetEvent(data)&&data.reset){
-          modifyClip(new ModifyInfo(0,1),() => {
-            return levelToDB(0)
-          })
-        }
-        break;
-      case "lumetri":
-
-        // TODO (1): Implement
-        // TODO (2): Create enum-like structure for easier property selection
-        break;
-    }
+    modifyClip(data);
   }
 }
 
+/**
+ * This defines all Information about the Modification
+ */
 class ModifyInfo{
   constructor(
       public component:number,
@@ -121,24 +41,89 @@ class ModifyInfo{
       public setInfoBool:boolean=true
   ) {
   }
+}
 
+const Infos:Record<string,ModifyInfo>={
+  ["move"]:new ModifyInfo(1, 0),
+  ["zoom"]:new ModifyInfo(1, 1),
+  ["rotate"]:new ModifyInfo(1,4),
+  ["opacity"]:new ModifyInfo(0,0),
+  ["audio"]:new ModifyInfo(0,1,false),
+  ["lumetri"]:new ModifyInfo(null,null) // TODO (1): Implement
+}
+/**
+ * Defines a Function Type, for easier use
+ */
+type ClipModifyFunction<T>=(info:any,data:T)=>any
+const defaultSetFunc:ClipModifyFunction< AbsoluteEvent<number> >=(info, data) => {return data.level};
+const defaultChangeFunc:ClipModifyFunction< RelativeEvent<number> >=(info, data) => {return info.getValue() + data.delta};
+/**
+ * Explicitly Define, which function does what.
+ * This will Hold, all Functions, that do stuff, for a single Event
+ */
+class ClipModifyFunctionHolder<T>{
+  constructor(public Change: ClipModifyFunction<T>,
+              public Set: ClipModifyFunction<T>,
+              public Reset: ClipModifyFunction<T>) {
+  }
+}
+/**
+ * The way the Data is laid out here is defined by {@link ClipModifyFunctionHolder}.
+ * This will hold all Functions for all Events
+ */
+const Processor: Record<string, ClipModifyFunctionHolder<WSEvent>> = {
+  ["move"]: new ClipModifyFunctionHolder<MoveEvent>(
+      (info, data) => {
+        const value = info.getValue()
+        return [value[0] + data.delta[0], value[1] + data.delta[1]]
+      },
+      (info, data: MoveEvent) => [data.level[0], data.level[1]],
+      () => [0.5, 0.5]
+  ),
+  ["zoom"]: new ClipModifyFunctionHolder<ZoomEvent>(defaultChangeFunc,defaultSetFunc,() =>100),
+  ["rotate"]: new ClipModifyFunctionHolder<RotateEvent>(defaultChangeFunc,defaultSetFunc,() =>0),
+  ["opacity"]: new ClipModifyFunctionHolder<OpacityEvent>(defaultChangeFunc,defaultSetFunc,() =>100),
+  ["audio"]: new ClipModifyFunctionHolder<AudioLevelEvent>(
+      (info, data) => {return levelToDB(dbToLevel(parseFloat(info.getValue())) + data.delta)},
+      (info, data) => {return levelToDB(data.level)},
+      () => {return levelToDB(0)}),
+  ["lumetri"]: new ClipModifyFunctionHolder<LumetriEvent>(() => {}, () => {}, () => {}) // TODO (1): Implement
 }
 
 /**
  * Modify the clip according
- * @param setting Which clip should get modified?
- * @param processor How should that clip get modified?
  */
-function modifyClip(setting:ModifyInfo, processor: (info:any)=>any){
+function modifyClip<T extends WSEvent>(data:T){
+  const setting = Infos[data.name];
   const clipInfo = getFirstSelectedClip(setting.videoClip)
   const info = clipInfo.clip.components[setting.component].properties[setting.property]
-  info.setValue(processor(info), setting.setInfoBool)
+  let func;
+  //This is basically tricking the compiler?
+  //Get Function
+  if(castResetEvent(data)&&data["reset"]){
+    func=Processor[data.name].Reset
+  }else if (castAbsoluteEvent(data)&&data["level"]){
+    func=Processor[data.name].Set
+  }else if (castRelativeEvent(data)&&data["delta"]){
+    func=Processor[data.name].Change
+  } else {
+    alert("Event not Found. Was the sent data correct?")
+  }
+  info.setValue(func(info,data), setting.setInfoBool)
 }
 
+/**
+ * Convert from db to an audio Level?
+ * @param db db number to convert
+ */
 function dbToLevel(db:number){
   return 20 * Math.log(db) * Math.LOG10E + 15;
 }
 
+/**
+ * Converts an audio level to a db number
+ * @param level
+ */
 function levelToDB(level:number){
   return Math.min(Math.pow(10, (level - 15)/20), 1.0);
 }
