@@ -6,6 +6,7 @@
 /// <reference path="../typings/extendscript.d.ts"/>
 /// <reference path="../typings/global.d.ts"/>
 /// <reference path="events.ts"/>
+var _a, _b;
 //Tell TypeScript, if something is of a particular type
 function castRelativeEvent(data) {
     return "delta" in data;
@@ -21,100 +22,12 @@ var demo = {
         alert("Hello World!");
     },
     receiveEvent: function (data) {
-        switch (data.name) {
-            case "move":
-                if (castResetEvent(data) && data.reset) {
-                    modifyClip(new ModifyInfo(1, 0), function () {
-                        return [0.5, 0.5];
-                    });
-                }
-                else if (castRelativeEvent(data)) {
-                    modifyClip(new ModifyInfo(1, 0), function (info) {
-                        var value = info.getValue();
-                        return [value[0] + data.delta[0], value[1] + data.delta[1]];
-                    });
-                }
-                else if (castAbsoluteEvent(data)) {
-                    modifyClip(new ModifyInfo(1, 0), function () {
-                        return [data.level[0], data.level[1]];
-                    });
-                }
-                break;
-            case "zoom":
-                if (castRelativeEvent(data) && data.delta) {
-                    modifyClip(new ModifyInfo(1, 1), function (info) {
-                        return info.getValue() + data.delta;
-                    });
-                }
-                else if (castAbsoluteEvent(data) && data.level) {
-                    modifyClip(new ModifyInfo(1, 1), function () {
-                        return data.level;
-                    });
-                }
-                else if (castResetEvent(data) && data.reset) {
-                    modifyClip(new ModifyInfo(1, 1), function () {
-                        return 100;
-                    });
-                }
-                break;
-            case "rotate":
-                if (castRelativeEvent(data) && data.delta) {
-                    modifyClip(new ModifyInfo(1, 4), function (info) {
-                        return info.getValue() + data.delta;
-                    });
-                }
-                else if (castAbsoluteEvent(data) && data.level) {
-                    modifyClip(new ModifyInfo(1, 4), function () {
-                        return data.level;
-                    });
-                }
-                else if (castResetEvent(data) && data.reset) {
-                    modifyClip(new ModifyInfo(1, 4), function () {
-                        return 0;
-                    });
-                }
-                break;
-            case "opacity":
-                if (castRelativeEvent(data) && data.delta) {
-                    modifyClip(new ModifyInfo(0, 0), function (info) {
-                        return info.getValue() + data.delta;
-                    });
-                }
-                else if (castAbsoluteEvent(data) && data.level) {
-                    modifyClip(new ModifyInfo(0, 0), function () {
-                        return data.level;
-                    });
-                }
-                else if (castResetEvent(data) && data.reset) {
-                    modifyClip(new ModifyInfo(0, 0), function () {
-                        return 100;
-                    });
-                }
-                break;
-            case "audio":
-                if (castRelativeEvent(data) && data.delta) {
-                    modifyClip(new ModifyInfo(0, 1), function (info) {
-                        return levelToDB(dbToLevel(parseFloat(info.getValue())) + data.delta);
-                    });
-                }
-                else if (castAbsoluteEvent(data) && data.level) {
-                    modifyClip(new ModifyInfo(0, 1), function () {
-                        return levelToDB(data.level);
-                    });
-                }
-                else if (castResetEvent(data) && data.reset) {
-                    modifyClip(new ModifyInfo(0, 1), function () {
-                        return levelToDB(0);
-                    });
-                }
-                break;
-            case "lumetri":
-                // TODO (1): Implement
-                // TODO (2): Create enum-like structure for easier property selection
-                break;
-        }
+        modifyClip(data);
     }
 };
+/**
+ * This defines all Information about the Modification
+ */
 var ModifyInfo = /** @class */ (function () {
     function ModifyInfo(component, property, videoClip, setInfoBool) {
         if (videoClip === void 0) { videoClip = true; }
@@ -126,19 +39,80 @@ var ModifyInfo = /** @class */ (function () {
     }
     return ModifyInfo;
 }());
+var Infos = (_a = {},
+    _a["move"] = new ModifyInfo(1, 0),
+    _a["zoom"] = new ModifyInfo(1, 1),
+    _a["rotate"] = new ModifyInfo(1, 4),
+    _a["opacity"] = new ModifyInfo(0, 0),
+    _a["audio"] = new ModifyInfo(0, 1, false),
+    _a["lumetri"] = new ModifyInfo(null, null) // TODO (1): Implement
+,
+    _a);
+var defaultSetFunc = function (info, data) { return data.level; };
+var defaultChangeFunc = function (info, data) { return info.getValue() + data.delta; };
+/**
+ * Explicitly Define, which function does what.
+ * This will Hold, all Functions, that do stuff, for a single Event
+ */
+var ClipModifyFunctionHolder = /** @class */ (function () {
+    function ClipModifyFunctionHolder(Change, Set, Reset) {
+        this.Change = Change;
+        this.Set = Set;
+        this.Reset = Reset;
+    }
+    return ClipModifyFunctionHolder;
+}());
+/**
+ * The way the Data is laid out here is defined by {@link ClipModifyFunctionHolder}.
+ * This will hold all Functions for all Events
+ */
+var Processor = (_b = {},
+    _b["move"] = new ClipModifyFunctionHolder(function (info, data) {
+        var value = info.getValue();
+        return [value[0] + data.delta[0], value[1] + data.delta[1]];
+    }, function (info, data) { return [data.level[0], data.level[1]]; }, function () { return [0.5, 0.5]; }),
+    _b["zoom"] = new ClipModifyFunctionHolder(defaultChangeFunc, defaultSetFunc, function () { return 100; }),
+    _b["rotate"] = new ClipModifyFunctionHolder(defaultChangeFunc, defaultSetFunc, function () { return 0; }),
+    _b["opacity"] = new ClipModifyFunctionHolder(defaultChangeFunc, defaultSetFunc, function () { return 100; }),
+    _b["audio"] = new ClipModifyFunctionHolder(function (info, data) { return levelToDB(dbToLevel(parseFloat(info.getValue())) + data.delta); }, function (info, data) { return levelToDB(data.level); }, function () { return levelToDB(0); }),
+    _b["lumetri"] = new ClipModifyFunctionHolder(function () { }, function () { }, function () { }) // TODO (1): Implement
+,
+    _b);
 /**
  * Modify the clip according
- * @param setting Which clip should get modified?
- * @param processor How should that clip get modified?
  */
-function modifyClip(setting, processor) {
+function modifyClip(data) {
+    var setting = Infos[data.name];
     var clipInfo = getFirstSelectedClip(setting.videoClip);
     var info = clipInfo.clip.components[setting.component].properties[setting.property];
-    info.setValue(processor(info), setting.setInfoBool);
+    var func;
+    //This is basically tricking the compiler?
+    //Get Function
+    if (castResetEvent(data) && data["reset"]) {
+        func = Processor[data.name].Reset;
+    }
+    else if (castAbsoluteEvent(data) && data["level"]) {
+        func = Processor[data.name].Set;
+    }
+    else if (castRelativeEvent(data) && data["delta"]) {
+        func = Processor[data.name].Change;
+    }
+    else {
+        alert("Event not Found. Was the sent data correct?");
+    }
+    info.setValue(func(info, data), setting.setInfoBool);
 }
+/**
+ * Convert from db to an audio Level?
+ * @param db db number to convert
+ */
 function dbToLevel(db) {
     return 20 * Math.log(db) * Math.LOG10E + 15;
 }
+/**
+ * Converts an audio level to a db number
+ * @param level
+ */
 function levelToDB(level) {
     return Math.min(Math.pow(10, (level - 15) / 20), 1.0);
 }
