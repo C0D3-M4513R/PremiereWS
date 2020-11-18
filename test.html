@@ -65,8 +65,8 @@
     let i = 1;
     function zoomIn() {
       socket.emit("event", {
-        name: "opacity",
-        reset: true
+        name: "move",
+        delta:[0.1,0.1]
       });
       console.log("Sent: " + i);
       i++;

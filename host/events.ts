@@ -1,48 +1,46 @@
 interface WSEvent{
   name:string
 }
-interface AbsoluteEvent extends WSEvent{
+interface AbsoluteEvent<D> extends WSEvent{
   level?:number
 }
-interface RelativeEvent extends WSEvent{
+interface RelativeEvent<D> extends WSEvent{
   delta?:number
 }
-interface RegularEvent extends AbsoluteEvent,RelativeEvent{}
+interface RegularEvent<D> extends RelativeEvent<D>,AbsoluteEvent<D>{}
 interface ResetEvent extends WSEvent{
   reset?:boolean
 }
 
-interface MoveEvent extends ResetEvent{
+interface MoveEvent extends RegularEvent<[number,number]>,ResetEvent{
   name: "move"
-  deltaX: number//TODO: make this fit in with RelativeEvent
-  deltaY: number//      maybe have delta and level in Relative and Absolute be a typevariable and have delta be an array?
   // reset?: boolean // sets position back to 0.5, 0.5
 }
 
-interface ZoomEvent extends RegularEvent{
+interface ZoomEvent extends RegularEvent<number>,ResetEvent{
   name: "zoom"
   // level?: number
   // delta?: number
 }
 
-interface RotateEvent extends RegularEvent{
+interface RotateEvent extends RegularEvent<number>,ResetEvent{
   name: "rotate"
   // level?: number // 0 to 360+
   // delta?: number
 }
 
-interface OpacityEvent extends RegularEvent {
+interface OpacityEvent extends RegularEvent<number>,ResetEvent {
   name: "opacity"
   // level?: number // between 0 and 100
   // delta?: number
 }
 
-interface AudioLevelEvent extends RelativeEvent {
+interface AudioLevelEvent extends RegularEvent<number>,ResetEvent {
   name: "audio"
   // delta: number
 }
 
-interface LumetriEvent extends RegularEvent {
+interface LumetriEvent extends RegularEvent<number>,ResetEvent {
   name: "lumetri"
   property: number
   // level?: number
