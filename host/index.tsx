@@ -4,120 +4,128 @@
 /// <reference path="../typings/XMPScript.d.ts"/>
 /// <reference path="../typings/extendscript.d.ts"/>
 /// <reference path="../typings/global.d.ts"/>
+/// <reference path="events.ts"/>
 
 declare interface Track {
   overwriteClip(clipProjectItem: ProjectItem, time: Time): void;
+}
+
+//Tell TypeScript, if something is of a particular type
+function castRelativeEvent<D>(data:WSEvent): data is RelativeEvent<D>{
+  return "delta" in data
+}
+function castAbsoluteEvent<D>(data:WSEvent): data is AbsoluteEvent<D>{
+  return "level" in data
+}
+function castResetEvent(data:WSEvent): data is ResetEvent{
+  return "reset" in data
 }
 
 var demo = {
   showMsg: function () {
     alert("Hello World!")
   },
-  setZoom: function (zoomLevel: number): boolean {
-    setZoomOfCurrentClip(zoomLevel);
-    return true;
-  },
   receiveEvent: function (data: WSEvent) {
-    switch (data.name) {
-      case "move":
-        if (data.reset) {
-          resetPositionOfCurrentClip();
-        } else {
-          moveCurrentClip(data.deltaX, data.deltaY)
-        }
-        break;
-      case "zoom":
-        if (data.delta) {
-          changeZoomOfCurrentClip(data.delta)
-        } else if (data.level) {
-          setZoomOfCurrentClip(data.level);
-        }
-        break;
-      case "rotate":
-        if (data.delta) {
-          rotateCurrentClip(data.delta)
-        } else if (data.level) {
-          setRotationOfCurrentClip(data.level);
-        }
-        break;
-      case "opacity":
-        if (data.delta) {
-          changeOpacityOfCurrentClip(data.delta)
-        } else if (data.level) {
-          setOpacityOfCurrentClip(data.level);
-        }
-        break;
-      case "audio":
-        changeAudioLevel(data.delta);
-        break;
-      case "lumetri":
-
-        // TODO (1): Implement
-        // TODO (2): Create enum-like structure for easier property selection
-        break;
-    }
+    modifyClip(data);
   }
 }
 
-function moveCurrentClip(deltaX: number, deltaY: number) {
-  const clipInfo = getFirstSelectedClip(true)
-  const positionInfo = clipInfo.clip.components[1].properties[0]
-  const [positionX, positionY] = positionInfo.getValue()
-  positionInfo.setValue([positionX + deltaX, positionY + deltaY], true)
+/**
+ * This defines all Information about the Modification
+ */
+class ModifyInfo{
+  constructor(
+      public component:number,
+      public property:number,
+      public videoClip:boolean=true,
+      public setInfoBool:boolean=true
+  ) {
+  }
 }
 
-function resetPositionOfCurrentClip() {
-  const clipInfo = getFirstSelectedClip(true)
-  const positionInfo = clipInfo.clip.components[1].properties[0]
-  positionInfo.setValue([0.5, 0.5], true)
+const Infos:Record<string,ModifyInfo>={
+  ["move"]:new ModifyInfo(1, 0),
+  ["zoom"]:new ModifyInfo(1, 1),
+  ["rotate"]:new ModifyInfo(1,4),
+  ["opacity"]:new ModifyInfo(0,0),
+  ["audio"]:new ModifyInfo(0,1,false),
+  ["lumetri"]:new ModifyInfo(null,null) // TODO (1): Implement
+}
+/**
+ * Defines a Function Type, for easier use
+ */
+type ClipModifyFunction<T>=(info:any,data:T)=>any
+const defaultSetFunc:ClipModifyFunction< AbsoluteEvent<number> >=(info, data) => {return data.level};
+const defaultChangeFunc:ClipModifyFunction< RelativeEvent<number> >=(info, data) => {return info.getValue() + data.delta};
+/**
+ * Explicitly Define, which function does what.
+ * This will Hold, all Functions, that do stuff, for a single Event
+ */
+class ClipModifyFunctionHolder<T>{
+  constructor(public Change: ClipModifyFunction<T>,
+              public Set: ClipModifyFunction<T>,
+              public Reset: ClipModifyFunction<T>) {
+  }
+}
+/**
+ * The way the Data is laid out here is defined by {@link ClipModifyFunctionHolder}.
+ * This will hold all Functions for all Events
+ */
+const Processor: Record<string, ClipModifyFunctionHolder<WSEvent>> = {
+  ["move"]: new ClipModifyFunctionHolder<MoveEvent>(
+      (info, data) => {
+        const value = info.getValue()
+        return [value[0] + data.delta[0], value[1] + data.delta[1]]
+      },
+      (info, data: MoveEvent) => [data.level[0], data.level[1]],
+      () => [0.5, 0.5]
+  ),
+  ["zoom"]: new ClipModifyFunctionHolder<ZoomEvent>(defaultChangeFunc,defaultSetFunc,() =>100),
+  ["rotate"]: new ClipModifyFunctionHolder<RotateEvent>(defaultChangeFunc,defaultSetFunc,() =>0),
+  ["opacity"]: new ClipModifyFunctionHolder<OpacityEvent>(defaultChangeFunc,defaultSetFunc,() =>100),
+  ["audio"]: new ClipModifyFunctionHolder<AudioLevelEvent>(
+      (info, data) => {return levelToDB(dbToLevel(parseFloat(info.getValue())) + data.delta)},
+      (info, data) => {return levelToDB(data.level)},
+      () => {return levelToDB(0)}),
+  ["lumetri"]: new ClipModifyFunctionHolder<LumetriEvent>(() => {}, () => {}, () => {}) // TODO (1): Implement
 }
 
-function setZoomOfCurrentClip(zoomLevel: number) {
-  const clipInfo = getFirstSelectedClip(true)
-  const scaleInfo = clipInfo.clip.components[1].properties[1]
-  scaleInfo.setValue(zoomLevel, true)
+/**
+ * Modify the clip according
+ */
+function modifyClip<T extends WSEvent>(data:T){
+  const setting = Infos[data.name];
+  const clipInfo = getFirstSelectedClip(setting.videoClip)
+  const info = clipInfo.clip.components[setting.component].properties[setting.property]
+  let func;
+  //This is basically tricking the compiler?
+  //Get Function
+  if(castResetEvent(data)&&data["reset"]){
+    func=Processor[data.name].Reset
+  }else if (castAbsoluteEvent(data)&&data["level"]){
+    func=Processor[data.name].Set
+  }else if (castRelativeEvent(data)&&data["delta"]){
+    func=Processor[data.name].Change
+  } else {
+    alert("Event not Found. Was the sent data correct?")
+  }
+  info.setValue(func(info,data), setting.setInfoBool)
 }
 
-function changeZoomOfCurrentClip(delta: number) {
-  const clipInfo = getFirstSelectedClip(true)
-  const scaleInfo = clipInfo.clip.components[1].properties[1]
-  const current: number = scaleInfo.getValue()
-  scaleInfo.setValue(current + delta, true);
+/**
+ * Convert from db to an audio Level?
+ * @param db db number to convert
+ */
+function dbToLevel(db:number){
+  return 20 * Math.log(db) * Math.LOG10E + 15;
 }
 
-function setRotationOfCurrentClip(level: number) {
-  const clipInfo = getFirstSelectedClip(true)
-  const info = clipInfo.clip.components[1].properties[4]
-  info.setValue(level, true)
-}
-
-function rotateCurrentClip(delta: number) {
-  const clipInfo = getFirstSelectedClip(true)
-  const info = clipInfo.clip.components[1].properties[4]
-  const current: number = info.getValue()
-  info.setValue(current + delta, true)
-}
-
-function setOpacityOfCurrentClip(level: number) {
-  const clipInfo = getFirstSelectedClip(true)
-  const info = clipInfo.clip.components[0].properties[0]
-  info.setValue(level, true)
-}
-
-function changeOpacityOfCurrentClip(delta: number) {
-  const clipInfo = getFirstSelectedClip(true)
-  const info = clipInfo.clip.components[0].properties[0]
-  const current: number = info.getValue()
-  info.setValue(current + delta, true)
-}
-
-function changeAudioLevel(levelInDb: number) {
-  const clipInfo = getFirstSelectedClip(false)
-  const levelInfo = clipInfo.clip.components[0].properties[1];
-  const level = 20 * Math.log(parseFloat(levelInfo.getValue())) * Math.LOG10E + 15;
-  const newLevel = level + levelInDb;
-  const encodedLevel = Math.min(Math.pow(10, (newLevel - 15)/20), 1.0);
-  levelInfo.setValue(encodedLevel, true);
+/**
+ * Converts an audio level to a db number
+ * @param level
+ */
+function levelToDB(level:number){
+  return Math.min(Math.pow(10, (level - 15)/20), 1.0);
 }
 
 function getFirstSelectedClip(videoClip: boolean) {
