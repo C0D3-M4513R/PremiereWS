@@ -27,33 +27,43 @@ var demo = {
         }
         break;
       case "zoom":
-        if (data.delta) {
+        if (data.reset) {
+          setZoomOfCurrentClip(100)
+        } else if (data.delta) {
           changeZoomOfCurrentClip(data.delta)
         } else if (data.level) {
-          setZoomOfCurrentClip(data.level);
+          setZoomOfCurrentClip(data.level)
         }
         break;
       case "rotate":
-        if (data.delta) {
+        if (data.reset) {
+          setRotationOfCurrentClip(0)
+        } else if (data.delta) {
           rotateCurrentClip(data.delta)
         } else if (data.level) {
-          setRotationOfCurrentClip(data.level);
+          setRotationOfCurrentClip(data.level)
         }
         break;
       case "opacity":
-        if (data.delta) {
+        if (data.reset) {
+          setOpacityOfCurrentClip(100);
+        } else if (data.delta) {
           changeOpacityOfCurrentClip(data.delta)
         } else if (data.level) {
-          setOpacityOfCurrentClip(data.level);
+          setOpacityOfCurrentClip(data.level)
         }
         break;
       case "audio":
-        changeAudioLevel(data.delta);
+        changeAudioLevel(data.delta)
         break;
       case "lumetri":
-
-        // TODO (1): Implement
-        // TODO (2): Create enum-like structure for easier property selection
+        if (data.reset) {
+          resetLumetriProperty(data.property)
+        } else if (data.delta) {
+          changeLumetriProperty(data.delta, data.property, true)
+        } else if (data.level) {
+          changeLumetriProperty(data.level, data.property, false)
+        }
         break;
     }
   }
@@ -116,10 +126,10 @@ function changeAudioLevel(levelInDb: number) {
   const levelInfo = clipInfo.clip.components[0].properties[1];
   const level = 20 * Math.log(parseFloat(levelInfo.getValue())) * Math.LOG10E + 15;
   const newLevel = level + levelInDb;
-  const encodedLevel = Math.min(Math.pow(10, (newLevel - 15)/20), 1.0);
+  const encodedLevel = Math.min(Math.pow(10, (newLevel - 15) / 20), 1.0);
   levelInfo.setValue(encodedLevel, true);
 }
-
+ 
 function getFirstSelectedClip(videoClip: boolean) {
   const currentSequence = app.project.activeSequence;
   const tracks = videoClip ? currentSequence.videoTracks : currentSequence.audioTracks;
@@ -136,4 +146,52 @@ function getFirstSelectedClip(videoClip: boolean) {
     }
   }
   return null;
+}
+
+/**
+ * Changes the selected property of the current clip's first lumetri component.
+ * @param data the relative or absolut value to set or add
+ * @param propertyIndex the index of the property to change
+ * @param relative true, if the change shall be relative
+ */
+function changeLumetriProperty(data: number, propertyIndex: number, relative: boolean) {
+  const lumetri = getLumetriComponent()
+  if (lumetri) {
+    const property = lumetri.properties[propertyIndex]
+    if (relative) {
+      property.setValue(property.getValue() + data, true)
+    } else {
+      property.setValue(data, true)
+    }
+  }
+}
+
+/**
+ * Resets the selected property of the current clip's first lumetri component.
+ * @param propertyIndex 
+ */
+function resetLumetriProperty(propertyIndex: number) {
+  // FIXME: Not all properties of lumetri are currently supported
+  const lumetri = getLumetriComponent()
+  if (lumetri) {
+    const property = lumetri.properties[propertyIndex]
+    if (propertyIndex == 24 || propertyIndex == 31 || propertyIndex == 36) {
+      property.setValue(100, true);
+    } else {
+      property.setValue(0, true);
+    }
+  }
+}
+
+/**
+ * Returns the lumetri component of the currently selected clip or undefined.
+ */
+function getLumetriComponent(): any {
+  const clip = getFirstSelectedClip(true).clip
+  for (let i = 2; i < clip.components.length; i++) {
+    if (clip.components[i].properties[2].displayName && clip.components[i].properties[2].displayName === "Einfache Korrektur") {
+      return clip.components[i]
+    }
+  }
+  return undefined
 }

@@ -65,8 +65,8 @@
     let i = 1;
     function zoomIn() {
       socket.emit("event", {
-        name: "audio",
-        delta: 0.1
+        name: "opacity",
+        reset: true
       });
       console.log("Sent: " + i);
       i++;
