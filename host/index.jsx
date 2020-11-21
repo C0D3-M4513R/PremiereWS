@@ -44,7 +44,7 @@ var Infos = (_a = {},
     _a["rotate"] = new ModifyInfo(1, 4),
     _a["opacity"] = new ModifyInfo(0, 0),
     _a["audio"] = new ModifyInfo(0, 1, false),
-    _a["lumetri"] = new ModifyInfo(null, null) // TODO (1): Implement
+    _a["lumetri"] = new ModifyInfo(null, null) //This is still relevant for the other properties
 ,
     _a);
 var defaultSetFunc = function (info, data) { return data.level; };
@@ -54,13 +54,19 @@ var defaultChangeFunc = function (info, data) { return info.getValue() + data.de
  * This will Hold, all Functions, that do stuff, for a single Event
  */
 var ClipModifyFunctionHolder = /** @class */ (function () {
-    function ClipModifyFunctionHolder(Change, Set, Reset) {
+    function ClipModifyFunctionHolder(Change, Set, Reset, GetClip, GetInfo) {
+        if (GetClip === void 0) { GetClip = defaultGetClip; }
+        if (GetInfo === void 0) { GetInfo = defaultGetInfo; }
         this.Change = Change;
         this.Set = Set;
         this.Reset = Reset;
+        this.GetClip = GetClip;
+        this.GetInfo = GetInfo;
     }
     return ClipModifyFunctionHolder;
 }());
+var defaultGetClip = function (setting) { return getFirstSelectedClip(setting.videoClip); };
+var defaultGetInfo = function (clip, setting) { return clip.clip.components[setting.component].properties[setting.property]; };
 /**
  * The way the Data is laid out here is defined by {@link ClipModifyFunctionHolder}.
  * This will hold all Functions for all Events
@@ -74,31 +80,36 @@ var Processor = (_b = {},
     _b["rotate"] = new ClipModifyFunctionHolder(defaultChangeFunc, defaultSetFunc, function () { return 0; }),
     _b["opacity"] = new ClipModifyFunctionHolder(defaultChangeFunc, defaultSetFunc, function () { return 100; }),
     _b["audio"] = new ClipModifyFunctionHolder(function (info, data) { return levelToDB(dbToLevel(parseFloat(info.getValue())) + data.delta); }, function (info, data) { return levelToDB(data.level); }, function () { return levelToDB(0); }),
-    _b["lumetri"] = new ClipModifyFunctionHolder(function () { }, function () { }, function () { }) // TODO (1): Implement
-,
+    _b["lumetri"] = new ClipModifyFunctionHolder(defaultChangeFunc, defaultSetFunc, function (info, data) {
+        if (data.property == 24 || data.property == 31 || data.property == 36)
+            return 100;
+        return 0;
+    }, getLumetriComponent, function (clip, setting, data) { return clip.properties[data.property]; }),
     _b);
 /**
  * Modify the clip according
  */
 function modifyClip(data) {
     var setting = Infos[data.name];
-    var clipInfo = getFirstSelectedClip(setting.videoClip);
-    var info = clipInfo.clip.components[setting.component].properties[setting.property];
+    var proc = Processor[data.name];
+    var clipInfo = proc.GetClip(setting);
+    var info = proc.GetInfo(clipInfo, setting, data);
     var func;
     //This is basically tricking the compiler?
     //Get Function
     if (castResetEvent(data) && data["reset"]) {
-        func = Processor[data.name].Reset;
+        func = proc.Reset;
     }
     else if (castAbsoluteEvent(data) && data["level"]) {
-        func = Processor[data.name].Set;
+        func = proc.Set;
     }
     else if (castRelativeEvent(data) && data["delta"]) {
-        func = Processor[data.name].Change;
+        func = proc.Change;
     }
     else {
         alert("Event not Found. Was the sent data correct?");
     }
+    alert("setting value:" + func(info, data));
     info.setValue(func(info, data), setting.setInfoBool);
 }
 /**
@@ -114,6 +125,18 @@ function dbToLevel(db) {
  */
 function levelToDB(level) {
     return Math.min(Math.pow(10, (level - 15) / 20), 1.0);
+}
+/**
+ * Returns the lumetri component of the currently selected clip or undefined.
+ */
+function getLumetriComponent() {
+    var clip = getFirstSelectedClip(true).clip;
+    for (var i = 2; i < clip.components.length; i++) {
+        if (clip.components[i].properties[2].displayName && clip.components[i].properties[2].displayName === "Basic Correction") {
+            return clip.components[i];
+        }
+    }
+    return undefined;
 }
 function getFirstSelectedClip(videoClip) {
     var currentSequence = app.project.activeSequence;

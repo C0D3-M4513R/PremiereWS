@@ -26,7 +26,7 @@ var demo = {
     alert("Hello World!")
   },
   receiveEvent: function (data: WSEvent) {
-    modifyClip(data);
+    modifyClip(data)
   }
 }
 
@@ -49,8 +49,9 @@ const Infos:Record<string,ModifyInfo>={
   ["rotate"]:new ModifyInfo(1,4),
   ["opacity"]:new ModifyInfo(0,0),
   ["audio"]:new ModifyInfo(0,1,false),
-  ["lumetri"]:new ModifyInfo(null,null) // TODO (1): Implement
+  ["lumetri"]:new ModifyInfo(null,null)//This is still relevant for the other properties
 }
+
 /**
  * Defines a Function Type, for easier use
  */
@@ -64,9 +65,13 @@ const defaultChangeFunc:ClipModifyFunction< RelativeEvent<number> >=(info, data)
 class ClipModifyFunctionHolder<T>{
   constructor(public Change: ClipModifyFunction<T>,
               public Set: ClipModifyFunction<T>,
-              public Reset: ClipModifyFunction<T>) {
+              public Reset: ClipModifyFunction<T>,
+              public GetClip: (setting:ModifyInfo) => any = defaultGetClip,
+              public GetInfo: (clip,setting:ModifyInfo,data:T) => any = defaultGetInfo) {
   }
 }
+const defaultGetClip = (setting)=>getFirstSelectedClip(setting.videoClip)
+const defaultGetInfo = (clip,setting)=>clip.clip.components[setting.component].properties[setting.property]
 /**
  * The way the Data is laid out here is defined by {@link ClipModifyFunctionHolder}.
  * This will hold all Functions for all Events
@@ -87,28 +92,35 @@ const Processor: Record<string, ClipModifyFunctionHolder<WSEvent>> = {
       (info, data) => {return levelToDB(dbToLevel(parseFloat(info.getValue())) + data.delta)},
       (info, data) => {return levelToDB(data.level)},
       () => {return levelToDB(0)}),
-  ["lumetri"]: new ClipModifyFunctionHolder<LumetriEvent>(() => {}, () => {}, () => {}) // TODO (1): Implement
+  ["lumetri"]: new ClipModifyFunctionHolder<LumetriEvent>(defaultChangeFunc, defaultSetFunc, (info, data) => {
+    if (data.property == 24 || data.property == 31 || data.property == 36) return 100;
+    return 0;
+  },getLumetriComponent,(clip, setting,data) => clip.properties[data.property] )
 }
 
 /**
  * Modify the clip according
  */
 function modifyClip<T extends WSEvent>(data:T){
-  const setting = Infos[data.name];
-  const clipInfo = getFirstSelectedClip(setting.videoClip)
-  const info = clipInfo.clip.components[setting.component].properties[setting.property]
+  const setting:ModifyInfo = Infos[data.name]
+  const proc:ClipModifyFunctionHolder<T> = Processor[data.name]
+
+  const clipInfo = proc.GetClip(setting)
+  const info = proc.GetInfo(clipInfo,setting,data)
+
   let func;
   //This is basically tricking the compiler?
   //Get Function
   if(castResetEvent(data)&&data["reset"]){
-    func=Processor[data.name].Reset
+    func=proc.Reset
   }else if (castAbsoluteEvent(data)&&data["level"]){
-    func=Processor[data.name].Set
+    func=proc.Set
   }else if (castRelativeEvent(data)&&data["delta"]){
-    func=Processor[data.name].Change
+    func=proc.Change
   } else {
     alert("Event not Found. Was the sent data correct?")
   }
+  alert("setting value:" +func(info,data))
   info.setValue(func(info,data), setting.setInfoBool)
 }
 
@@ -126,6 +138,19 @@ function dbToLevel(db:number){
  */
 function levelToDB(level:number){
   return Math.min(Math.pow(10, (level - 15)/20), 1.0);
+}
+
+/**
+ * Returns the lumetri component of the currently selected clip or undefined.
+ */
+function getLumetriComponent(): any {
+  const clip = getFirstSelectedClip(true).clip
+  for (let i = 2; i < clip.components.length; i++) {
+    if (clip.components[i].properties[2].displayName && clip.components[i].properties[2].displayName === "Basic Correction") {
+      return clip.components[i]
+    }
+  }
+  return undefined
 }
 
 function getFirstSelectedClip(videoClip: boolean) {

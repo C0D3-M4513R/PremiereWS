@@ -58,15 +58,16 @@
     input.onkeypress = function (event) {
       if (event.keyCode === 13) {
         console.log("Starting!")
-        window.setInterval(zoomIn, 50);
+        window.setInterval(zoomIn, 400);
         return false;
       }
     };
     let i = 1;
     function zoomIn() {
       socket.emit("event", {
-        name: "move",
-        delta:[0.1,0.1]
+        name: "lumetri",
+        property: 36,
+        delta: -0.1
       });
       console.log("Sent: " + i);
       i++;
